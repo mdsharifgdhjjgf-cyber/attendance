@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>উপস্থিতি ট্র্যাকার</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #161a24;
+    --bg3: #1e2330;
+    --card: #1a1f2e;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --text2: #8b92a8;
+    --text3: #555e75;
+    --accent: #4f8ef7;
+    --accent2: #3570d4;
+    --green: #22c78a;
+    --red: #ef5350;
+    --yellow: #f5a623;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ─── Login ─── */
+  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; background: radial-gradient(ellipse at 50% 0%, #1a2744 0%, var(--bg) 70%); }
+  .login-box { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 2.5rem 2rem; width: 100%; max-width: 380px; text-align: center; }
+  .login-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .login-box h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .login-box p { font-size: 0.85rem; color: var(--text2); margin-bottom: 2rem; }
+  .role-tabs { display: flex; background: var(--bg2); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 1.5rem; gap: 4px; }
+  .role-tab { flex: 1; padding: 9px; font-size: 0.9rem; font-family: inherit; border: none; border-radius: 6px; background: transparent; color: var(--text2); cursor: pointer; font-weight: 500; transition: all 0.2s; }
+  .role-tab.active { background: var(--accent); color: #fff; }
+  .field { margin-bottom: 1rem; text-align: left; }
+  .field label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 11px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+  .field input:focus { border-color: var(--accent); }
+  .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .btn-primary:hover { background: var(--accent2); }
+  .err-msg { color: var(--red); font-size: 0.82rem; margin-top: 0.8rem; min-height: 1.2rem; }
+
+  /* ─── App shell ─── */
+  .app-shell { max-width: 820px; margin: 0 auto; padding: 1rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+  .topbar-left h2 { font-size: 1.1rem; font-weight: 700; }
+  .topbar-left span { font-size: 0.8rem; color: var(--text2); }
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+  .badge-role { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-teacher { background: rgba(79,142,247,0.15); color: var(--accent); border: 1px solid rgba(79,142,247,0.3); }
+  .badge-viewer { background: rgba(139,146,168,0.12); color: var(--text2); border: 1px solid var(--border); }
+  .btn-logout { padding: 6px 14px; background: transparent; border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); font-family: inherit; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* ─── Tabs ─── */
+  .tabs { display: flex; gap: 4px; background: var(--bg2); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 1.5rem; overflow-x: auto; }
+  .tab-btn { flex: 1; min-width: 80px; padding: 9px 12px; font-size: 0.85rem; font-family: inherit; border: none; border-radius: 6px; background: transparent; color: var(--text2); cursor: pointer; font-weight: 500; transition: all 0.2s; white-space: nowrap; }
+  .tab-btn.active { background: var(--card); color: var(--text); border: 1px solid var(--border2); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ─── Cards ─── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem; }
+
+  /* ─── Metric cards ─── */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; text-align: center; }
+  .metric-val { font-size: 1.8rem; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .metric-label { font-size: 0.75rem; color: var(--text2); }
+  .m-blue { color: var(--accent); }
+  .m-green { color: var(--green); }
+  .m-red { color: var(--red); }
+  .m-yellow { color: var(--yellow); }
+
+  /* ─── Inputs & buttons ─── */
+  .input-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .input-row input, .input-field { flex: 1; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.9rem; outline: none; }
+  .input-row input:focus, .input-field:focus { border-color: var(--accent); }
+  .btn { padding: 9px 18px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text); font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { background: var(--bg3); }
+  .btn-blue { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-blue:hover { background: var(--accent2); }
+  .btn-green { background: rgba(34,199,138,0.12); border-color: var(--green); color: var(--green); }
+  .btn-red-outline { background: transparent; border-color: rgba(239,83,80,0.3); color: #ef9090; font-size: 0.75rem; padding: 5px 10px; }
+  .btn-red-outline:hover { border-color: var(--red); color: var(--red); }
+
+  /* ─── Student list ─── */
+  .student-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .student-row:last-child { border-bottom: none; }
+  .s-num { font-size: 0.75rem; color: var(--text3); min-width: 26px; }
+  .s-name { flex: 1; font-size: 0.9rem; }
+
+  /* ─── Attendance ─── */
+  .date-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+  .date-input { padding: 9px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.88rem; }
+  .sess-btn { padding: 7px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; color: var(--text2); font-family: inherit; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .sess-btn.active { background: rgba(79,142,247,0.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .bulk-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+  .att-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .att-row:last-child { border-bottom: none; }
+  .att-name { flex: 1; font-size: 0.9rem; }
+  .toggle-wrap { display: flex; gap: 4px; }
+  .tog { padding: 5px 12px; font-size: 0.8rem; font-family: inherit; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-weight: 500; transition: all 0.15s; }
+  .tog.present { background: rgba(34,199,138,0.15); border-color: var(--green); color: var(--green); }
+  .tog.absent { background: rgba(239,83,80,0.12); border-color: var(--red); color: var(--red); }
+
+  /* ─── Report ─── */
+  .report-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .report-row:last-child { border-bottom: none; }
+  .r-name { flex: 1; font-size: 0.88rem; }
+  .r-pct { font-size: 0.82rem; color: var(--text2); min-width: 48px; text-align: right; font-weight: 600; }
+  .pbar { height: 5px; background: var(--bg2); border-radius: 3px; flex: 1; overflow: hidden; }
+  .pbar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+  /* ─── History ─── */
+  .hist-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .hist-item:last-child { border-bottom: none; }
+  .hist-date { font-size: 0.88rem; font-weight: 600; margin-bottom: 3px; }
+  .hist-meta { font-size: 0.78rem; color: var(--text2); margin-bottom: 6px; }
+  .pct-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+  .b-green { background: rgba(34,199,138,0.15); color: var(--green); }
+  .b-yellow { background: rgba(245,166,35,0.15); color: var(--yellow); }
+  .b-red { background: rgba(239,83,80,0.12); color: var(--red); }
+
+  /* ─── Setup ─── */
+  .setup-card { background: var(--card); border: 1px solid var(--border2); border-radius: var(--radius); padding: 2rem; max-width: 480px; margin: 2rem auto; }
+  .setup-card h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .setup-card p { font-size: 0.85rem; color: var(--text2); margin-bottom: 1.5rem; }
+
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text3); font-size: 0.88rem; }
+  .search-input { width: 100%; padding: 9px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.88rem; margin-bottom: 12px; outline: none; }
+  .search-input:focus { border-color: var(--accent); }
+  .saved-flash { font-size: 0.78rem; color: var(--green); transition: opacity 0.5s; }
+  .loading { text-align: center; padding: 3rem; color: var(--text3); }
+
+  select.input-field { appearance: none; }
+
+  @media (max-width: 500px) {
+    .topbar { padding: 0.75rem 0 1rem; }
+    .topbar-left h2 { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+<div id="page-login" class="page active">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-icon">📚</div>
+      <h1>উপস্থিতি ট্র্যাকার</h1>
+      <p>শিক্ষক লগইন করুন অথবা দর্শক হিসেবে দেখুন</p>
+      <div class="role-tabs">
+        <button class="role-tab active" onclick="setRole('viewer')">👁️ শুধু দেখতে চাই</button>
+        <button class="role-tab" onclick="setRole('teacher')">🔐 শিক্ষক লগইন</button>
+      </div>
+      <div id="teacher-fields" style="display:none;">
+        <div class="field">
+          <label>পাসওয়ার্ড</label>
+          <input type="password" id="login-pass" placeholder="শিক্ষকের পাসওয়ার্ড লিখুন..." onkeydown="if(event.key==='Enter')doLogin()" />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="doLogin()" id="login-btn">প্রবেশ করুন →</button>
+      <div class="err-msg" id="login-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SETUP PAGE ═══════════════ -->
+<div id="page-setup" class="page">
+  <div class="app-shell">
+    <div class="setup-card">
+      <h2>🎉 প্রথমবার সেটআপ</h2>
+      <p>স্বাগতম! প্রথমে শিক্ষকের পাসওয়ার্ড তৈরি করুন। এই পাসওয়ার্ড দিয়েই পরে লগইন করবেন।</p>
+      <div class="field">
+        <label>ক্লাসের নাম (যেমন: ব্যাচ-২০২৫, HSC-A)</label>
+        <input type="text" id="setup-class" class="input-field" placeholder="ক্লাসের নাম লিখুন..." />
+      </div>
+      <div class="field">
+        <label>শিক্ষকের নাম</label>
+        <input type="text" id="setup-teacher" class="input-field" placeholder="আপনার নাম লিখুন..." />
+      </div>
+      <div class="field">
+        <label>পাসওয়ার্ড তৈরি করুন</label>
+        <input type="password" id="setup-pass1" class="input-field" placeholder="নতুন পাসওয়ার্ড..." />
+      </div>
+      <div class="field" style="margin-top:0.5rem;">
+        <label>পাসওয়ার্ড নিশ্চিত করুন</label>
+        <input type="password" id="setup-pass2" class="input-field" placeholder="আবার লিখুন..." />
+      </div>
+      <button class="btn-primary" onclick="doSetup()" style="margin-top:0.5rem;">সেটআপ সম্পন্ন করুন →</button>
+      <div class="err-msg" id="setup-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div id="page-app" class="page">
+  <div class="app-shell">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="app-class-name">উপস্থিতি ট্র্যাকার</h2>
+        <span id="app-meta">লোড হচ্ছে...</span>
+      </div>
+      <div class="topbar-right">
+        <span class="badge-role" id="role-badge">—</span>
+        <button class="btn-logout" onclick="doLogout()">লগআউট</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="main-tabs">
+      <button class="tab-btn active" onclick="switchTab('overview')">📊 সারসংক্ষেপ</button>
+      <button class="tab-btn" onclick="switchTab('attendance')" id="tab-att-btn">✅ উপস্থিতি</button>
+      <button class="tab-btn" onclick="switchTab('students')" id="tab-stu-btn">👥 ছাত্র</button>
+      <button class="tab-btn" onclick="switchTab('history')">📅 ইতিহাস</button>
+      <button class="tab-btn" onclick="switchTab('report')">📈 রিপোর্ট</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="panel-overview">
+      <div class="metrics" id="overview-metrics">
+        <div class="loading">লোড হচ্ছে...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">সাম্প্রতিক ক্লাস</div>
+        <div id="recent-classes"><div class="empty">কোনো ক্লাস নেই</div></div>
+      </div>
+      <div class="card" id="low-att-card" style="display:none;">
+        <div class="card-title">⚠️ কম উপস্থিতি (৭৫%-এর নিচে)</div>
+        <div id="low-att-list"></div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE (teacher only) -->
+    <div class="tab-panel" id="panel-attendance">
+      <div id="att-viewer-notice" style="display:none;" class="card">
+        <div class="empty">🔒 শুধুমাত্র শিক্ষক উপস্থিতি দিতে পারবেন</div>
+      </div>
+      <div id="att-teacher-panel">
+        <div class="date-row">
+          <input type="date" class="date-input" id="att-date" />
+          <button class="sess-btn active" id="sess-1" onclick="setSession(1)">১ম ক্লাস</button>
+          <button class="sess-btn" id="sess-2" onclick="setSession(2)">২য় ক্লাস</button>
+          <button class="sess-btn" id="sess-3" onclick="setSession(3)">৩য় ক্লাস</button>
+        </div>
+        <div class="bulk-row">
+          <button class="btn btn-green" onclick="markAll(true)">✓ সবাই উপস্থিত</button>
+          <button class="btn" onclick="markAll(false)" style="color:var(--red);border-color:rgba(239,83,80,0.3);">✗ সবাই অনুপস্থিত</button>
+          <span style="flex:1"></span>
+          <span class="saved-flash" id="att-saved"></span>
+          <button class="btn btn-blue" onclick="saveAttendance()">💾 সংরক্ষণ করুন</button>
+        </div>
+        <div class="card">
+          <div id="att-list"><div class="empty">ছাত্র যোগ করুন প্রথমে</div></div>
+        </div>
+        <div id="att-count" style="font-size:0.8rem;color:var(--text2);text-align:right;margin-top:-6px;"></div>
+      </div>
+    </div>
+
+    <!-- STUDENTS -->
+    <div class="tab-panel" id="panel-students">
+      <div id="stu-teacher-add" style="display:none;">
+        <div class="input-row">
+          <input type="text" id="new-stu" placeholder="ছাত্রের নাম লিখুন (Enter চাপুন)..." onkeydown="if(event.key==='Enter')addStudent()" />
+          <button class="btn btn-blue" onclick="addStudent()">+ যোগ করুন</button>
+        </div>
+      </div>
+      <div class="card">
+        <input type="text" class="search-input" id="stu-search" placeholder="🔍 নাম খুঁজুন..." oninput="renderStudents()" />
+        <div id="stu-list"><div class="empty">কোনো ছাত্র নেই</div></div>
+      </div>
+      <div id="stu-count" style="font-size:0.8rem;color:var(--text3);text-align:center;padding:4px;"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="tab-panel" id="panel-history">
+      <div class="card">
+        <div id="hist-list"><div class="empty">কোনো রেকর্ড নেই</div></div>
+      </div>
+    </div>
+
+    <!-- REPORT -->
+    <div class="tab-panel" id="panel-report">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:4px;">প্রতিটি ছাত্রের উপস্থিতি হার</div>
+        <div style="font-size:0.78rem;color:var(--text3);margin-bottom:1rem;">সবুজ ≥৭৫% | হলুদ ৫০-৭৪% | লাল &lt;৫০%</div>
+        <div id="report-list"><div class="empty">কোনো তথ্য নেই</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  Storage helpers (shared across users)
+// ══════════════════════════════════════
+const SK_CONFIG  = 'att_config_v2';
+const SK_STUDENTS = 'att_students_v2';
+const SK_RECORDS  = 'att_records_v2';
+
+async function getShared(key) {
+  try { const r = await window.storage.get(key, true); return r ? JSON.parse(r.value) : null; }
+  catch(e) { return null; }
+}
+async function setShared(key, val) {
+  try { await window.storage.set(key, JSON.stringify(val), true); return true; }
+  catch(e) { return false; }
+}
+async function getLocal(key) {
+  try { const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
+  catch(e) { return null; }
+}
+async function setLocal(key, val) {
+  try { await window.storage.set(key, JSON.stringify(val), false); } catch(e) {}
+}
+
+// ══════════════════════════════════════
+//  App State
+// ══════════════════════════════════════
+let role = 'viewer'; // 'teacher' | 'viewer'
+let config = null;   // { className, teacherName, passHash }
+let students = [];
+let records = {};    // { 'YYYY-MM-DD_sN': { studentId: true/false } }
+let currentSession = 1;
+let activeTab = 'overview';
+
+// Simple hash (not cryptographic, good enough for classroom use)
+function hashPass(pass) {
+  let h = 0;
+  for (let i = 0; i < pass.length; i++) { h = (Math.imul(31, h) + pass.charCodeAt(i)) | 0; }
+  return h.toString(16) + '_' + pass.length;
+}
+
+// ══════════════════════════════════════
+//  Pages
+// ══════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+}
+
+// ══════════════════════════════════════
+//  Init
+// ══════════════════════════════════════
+async function init() {
+  config = await getShared(SK_CONFIG);
+  if (!config) { showPage('setup'); return; }
+  // Check if teacher was already logged in (local session)
+  const sess = await getLocal('att_session_v2');
+  if (sess && sess.role === 'teacher' && sess.ts > Date.now() - 8*60*60*1000) {
+    role = 'teacher';
+    enterApp();
+  } else {
+    showPage('login');
+  }
+}
+
+// ══════════════════════════════════════
+//  Login
+// ══════════════════════════════════════
+let loginRole = 'viewer';
+function setRole(r) {
+  loginRole = r;
+  document.querySelectorAll('.role-tab').forEach((t,i) => t.classList.toggle('active', (i===0 && r==='viewer') || (i===1 && r==='teacher')));
+  document.getElementById('teacher-fields').style.display = r === 'teacher' ? 'block' : 'none';
+  document.getElementById('login-btn').textContent = r === 'teacher' ? 'লগইন করুন →' : 'প্রবেশ করুন →';
+}
+function doLogin() {
+  if (loginRole === 'viewer') { role = 'viewer'; enterApp(); return; }
+  const pass = document.getElementById('login-pass').value;
+  if (!pass) { document.getElementById('login-err').textContent = 'পাসওয়ার্ড লিখুন'; return; }
+  if (hashPass(pass) !== config.passHash) {
+    document.getElementById('login-err').textContent = '❌ পাসওয়ার্ড সঠিক নয়';
+    return;
+  }
+  role = 'teacher';
+  setLocal('att_session_v2', { role: 'teacher', ts: Date.now() });
+  enterApp();
+}
+function doLogout() {
+  setLocal('att_session_v2', null);
+  role = 'viewer';
+  document.getElementById('login-pass') && (document.getElementById('login-pass').value = '');
+  document.getElementById('login-err') && (document.getElementById('login-err').textContent = '');
+  showPage('login');
+}
+
+// ══════════════════════════════════════
+//  Setup
+// ══════════════════════════════════════
+async function doSetup() {
+  const cn = document.getElementById('setup-class').value.trim();
+  const tn = document.getElementById('setup-teacher').value.trim();
+  const p1 = document.getElementById('setup-pass1').value;
+  const p2 = document.getElementById('setup-pass2').value;
+  const err = document.getElementById('setup-err');
+  if (!cn || !tn) { err.textContent = 'ক্লাসের নাম ও শিক্ষকের নাম দিন'; return; }
+  if (p1.length < 4) { err.textContent = 'পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে'; return; }
+  if (p1 !== p2) { err.textContent = 'পাসওয়ার্ড মেলেনি'; return; }
+  config = { className: cn, teacherName: tn, passHash: hashPass(p1) };
+  await setShared(SK_CONFIG, config);
+  role = 'teacher';
+  setLocal('att_session_v2', { role: 'teacher', ts: Date.now() });
+  enterApp();
+}
+
+// ══════════════════════════════════════
+//  Enter App
+// ══════════════════════════════════════
+async function enterApp() {
+  showPage('app');
+  students = (await getShared(SK_STUDENTS)) || [];
+  records  = (await getShared(SK_RECORDS))  || {};
+
+  // Setup topbar
+  document.getElementById('app-class-name').textContent = '📚 ' + (config?.className || 'ক্লাস');
+  document.getElementById('app-meta').textContent = (config?.teacherName || '') + ' | ' + students.length + ' জন ছাত্র';
+  const rb = document.getElementById('role-badge');
+  rb.textContent = role === 'teacher' ? '👨‍🏫 শিক্ষক' : '👁️ দর্শক';
+  rb.className = 'badge-role ' + (role === 'teacher' ? 'badge-teacher' : 'badge-viewer');
+
+  // Show/hide teacher-only controls
+  const isTeacher = role === 'teacher';
+  document.getElementById('att-viewer-notice').style.display = isTeacher ? 'none' : 'block';
+  document.getElementById('att-teacher-panel').style.display = isTeacher ? 'block' : 'none';
+  document.getElementById('stu-teacher-add').style.display = isTeacher ? 'block' : 'none';
+
+  // Set today's date
+  const d = document.getElementById('att-date');
+  if (d) d.value = new Date().toISOString().split('T')[0];
+
+  switchTab('overview');
+}
+
+// ══════════════════════════════════════
+//  Tabs
+// ══════════════════════════════════════
+function switchTab(tab) {
+  activeTab = tab;
+  const tabs = ['overview','attendance','students','history','report'];
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', tabs[i] === tab));
+  document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', tabs[i] === tab));
+  if (tab === 'overview') renderOverview();
+  if (tab === 'attendance') renderAttList();
+  if (tab === 'students') renderStudents();
+  if (tab === 'history') renderHistory();
+  if (tab === 'report') renderReport();
+}
+
+// ══════════════════════════════════════
+//  Overview
+// ══════════════════════════════════════
+function renderOverview() {
+  const total = students.length;
+  const totalClasses = Object.keys(records).length;
+  let sumPct = 0, counted = 0;
+  students.forEach(s => {
+    let p = 0, m = 0;
+    Object.values(records).forEach(rec => { if (rec[s.id] !== undefined) { m++; if (rec[s.id]) p++; } });
+    if (m > 0) { sumPct += p/m; counted++; }
+  });
+  const avg = counted > 0 ? Math.round((sumPct / counted) * 100) : 0;
+  const avgCls = avg >= 75 ? 'm-green' : avg >= 50 ? 'm-yellow' : 'm-red';
+
+  document.getElementById('overview-metrics').innerHTML = `
+    <div class="metric"><div class="metric-val m-blue">${total}</div><div class="metric-label">মোট ছাত্র</div></div>
+    <div class="metric"><div class="metric-val m-blue">${totalClasses}</div><div class="metric-label">মোট ক্লাস</div></div>
+    <div class="metric"><div class="metric-val ${avgCls}">${avg}%</div><div class="metric-label">গড় উপস্থিতি</div></div>`;
+
+  // Recent 5 classes
+  const keys = Object.keys(records).sort().reverse().slice(0,5);
+  const days = ['রবি','সোম','মঙ্গল','বুধ','বৃহঃ','শুক্র','শনি'];
+  if (!keys.length) {
+    document.getElementById('recent-classes').innerHTML = '<div class="empty">কোনো ক্লাস রেকর্ড নেই</div>';
+  } else {
+    document.getElementById('recent-classes').innerHTML = keys.map(k => {
+      const [date, sess] = k.split('_');
+      const rec = records[k];
+      let p = 0, m = 0;
+      students.forEach(s => { if (rec[s.id] !== undefined) { m++; if (rec[s.id]) p++; } });
+      const pct = m > 0 ? Math.round((p/m)*100) : 0;
+      const d = new Date(date); const day = days[d.getDay()];
+      const bc = pct>=75?'b-green':pct>=50?'b-yellow':'b-red';
+      const fc = pct>=75?'#22c78a':pct>=50?'#f5a623':'#ef5350';
+      return `<div class="hist-item">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div class="hist-date">${date} (${day}) — ${sess?.replace('s','')} নং ক্লাস</div>
+          <div class="hist-meta">উপস্থিত ${p} / চিহ্নিত ${m}</div></div>
+          <span class="pct-badge ${bc}">${pct}%</span>
+        </div>
+        <div style="height:4px;background:var(--bg2);border-radius:2px;margin-top:8px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${fc};border-radius:2px;transition:width 0.4s;"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Low attendance warning
+  const lowCard = document.getElementById('low-att-card');
+  const lowList = document.getElementById('low-att-list');
+  const low = students.filter(s => {
+    let p=0,m=0;
+    Object.values(records).forEach(rec => { if(rec[s.id]!==undefined){m++;if(rec[s.id])p++;} });
+    return m >= 3 && (p/m)*100 < 75;
+  });
+  if (low.length > 0) {
+    lowCard.style.display = 'block';
+    lowList.innerHTML = low.map(s => {
+      let p=0,m=0;
+      Object.values(records).forEach(rec => { if(rec[s.id]!==undefined){m++;if(rec[s.id])p++;} });
+      const pct = Math.round((p/m)*100);
+      return `<div class="student-row"><span class="s-num">${s.roll}</span><span class="s-name">${s.name}</span>
+        <span class="pct-badge b-red">${pct}%</span></div>`;
+    }).join('');
+  } else { lowCard.style.display = 'none'; }
+}
+
+// ══════════════════════════════════════
+//  Attendance
+// ══════════════════════════════════════
+function setSession(n) {
+  currentSession = n;
+  [1,2,3].forEach(i => document.getElementById('sess-'+i)?.classList.toggle('active', i===n));
+  renderAttList();
+}
+function getKey() { return document.getElementById('att-date').value + '_s' + currentSession; }
+
+function renderAttList() {
+  const el = document.getElementById('att-list');
+  if (!el) return;
+  if (!students.length) { el.innerHTML = '<div class="empty">প্রথমে ছাত্র যোগ করুন</div>'; return; }
+  const key = getKey();
+  const rec = records[key] || {};
+  let p = 0;
+  el.innerHTML = students.map(s => {
+    const isP = rec[s.id] === true;
+    const isA = rec[s.id] === false;
+    if (isP) p++;
+    const readonly = role !== 'teacher';
+    return `<div class="att-row">
+      <span class="s-num">${s.roll}</span>
+      <span class="att-name">${s.name}</span>
+      <div class="toggle-wrap">
+        <button class="tog ${isP?'present':''}" onclick="${readonly?'':'toggleAtt('+s.id+', true)'}" ${readonly?'disabled':''}>✓ আছে</button>
+        <button class="tog ${isA?'absent':''}" onclick="${readonly?'':'toggleAtt('+s.id+', false)'}" ${readonly?'disabled':''}>✗ নেই</button>
+      </div>
+    </div>`;
+  }).join('');
+  const total = students.length, marked = Object.keys(rec).length;
+  const el2 = document.getElementById('att-count');
+  if (el2) el2.textContent = `উপস্থিত: ${p} | অনুপস্থিত: ${marked - p} | চিহ্নিত: ${marked}/${total}`;
+}
+
+function toggleAtt(id, present) {
+  const key = getKey();
+  if (!records[key]) records[key] = {};
+  records[key][id] = present;
+  renderAttList();
+}
+function markAll(present) {
+  const key = getKey();
+  if (!records[key]) records[key] = {};
+  students.forEach(s => records[key][s.id] = present);
+  renderAttList();
+}
+async function saveAttendance() {
+  await setShared(SK_RECORDS, records);
+  const el = document.getElementById('att-saved');
+  el.textContent = '✓ সংরক্ষিত হয়েছে';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2500);
+  renderOverview();
+}
+
+// ══════════════════════════════════════
+//  Students
+// ══════════════════════════════════════
+async function addStudent() {
+  const inp = document.getElementById('new-stu');
+  const name = inp.value.trim();
+  if (!name) return;
+  students.push({ id: Date.now(), name, roll: students.length + 1 });
+  inp.value = '';
+  await setShared(SK_STUDENTS, students);
+  document.getElementById('app-meta').textContent = (config?.teacherName || '') + ' | ' + students.length + ' জন ছাত্র';
+  renderStudents();
+  renderAttList();
+}
+async function removeStudent(id) {
+  if (!confirm('এই ছাত্রকে মুছবেন?')) return;
+  students = students.filter(s => s.id !== id);
+  students.forEach((s, i) => s.roll = i + 1);
+  await setShared(SK_STUDENTS, students);
+  renderStudents();
+  renderAttList();
+}
+function renderStudents() {
+  const q = (document.getElementById('stu-search')?.value || '').toLowerCase();
+  const el = document.getElementById('stu-list');
+  const filtered = students.filter(s => s.name.toLowerCase().includes(q));
+  if (!filtered.length) { el.innerHTML = '<div class="empty">কোনো ছাত্র পাওয়া যায়নি</div>'; return; }
+  const isT = role === 'teacher';
+  el.innerHTML = filtered.map(s => `
+    <div class="student-row">
+      <span class="s-num">${s.roll}</span>
+      <span class="s-name">${s.name}</span>
+      ${isT ? `<button class="btn btn-red-outline" onclick="removeStudent(${s.id})">✕ মুছুন</button>` : ''}
+    </div>`).join('');
+  const cnt = document.getElementById('stu-count');
+  if (cnt) cnt.textContent = `মোট ${students.length} জন ছাত্রছাত্রী`;
+}
+
+// ══════════════════════════════════════
+//  History
+// ══════════════════════════════════════
+function renderHistory() {
+  const el = document.getElementById('hist-list');
+  const days = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+  const keys = Object.keys(records).sort().reverse();
+  if (!keys.length) { el.innerHTML = '<div class="empty">কোনো রেকর্ড নেই</div>'; return; }
+  el.innerHTML = keys.map(k => {
+    const [date, sess] = k.split('_');
+    const rec = records[k];
+    let p=0, m=0;
+    students.forEach(s => { if(rec[s.id]!==undefined){m++;if(rec[s.id])p++;} });
+    const pct = m > 0 ? Math.round((p/m)*100) : 0;
+    const d = new Date(date); const day = days[d.getDay()];
+    const bc = pct>=75?'b-green':pct>=50?'b-yellow':'b-red';
+    const fc = pct>=75?'#22c78a':pct>=50?'#f5a623':'#ef5350';
+    const del = role==='teacher' ? `<button class="btn btn-red-outline" style="margin-left:8px;" onclick="deleteRecord('${k}')">✕</button>` : '';
+    return `<div class="hist-item">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div><div class="hist-date">${date} (${day}) — ${sess?.replace('s','')} নং ক্লাস</div>
+        <div class="hist-meta">উপস্থিত ${p} জন | চিহ্নিত ${m} জন | মোট ছাত্র ${students.length}</div></div>
+        <div style="display:flex;align-items:center;"><span class="pct-badge ${bc}">${pct}%</span>${del}</div>
+      </div>
+      <div style="height:4px;background:var(--bg2);border-radius:2px;margin-top:8px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${fc};border-radius:2px;"></div></div>
+    </div>`;
+  }).join('');
+}
+async function deleteRecord(key) {
+  if (!confirm('এই রেকর্ড মুছবেন?')) return;
+  delete records[key];
+  await setShared(SK_RECORDS, records);
+  renderHistory(); renderOverview();
+}
+
+// ══════════════════════════════════════
+//  Report
+// ══════════════════════════════════════
+function renderReport() {
+  const el = document.getElementById('report-list');
+  const total = Object.keys(records).length;
+  if (!students.length || !total) { el.innerHTML = '<div class="empty">কোনো তথ্য নেই</div>'; return; }
+  const rows = students.map(s => {
+    let p=0, m=0;
+    Object.values(records).forEach(rec => { if(rec[s.id]!==undefined){m++;if(rec[s.id])p++;} });
+    const pct = m > 0 ? Math.round((p/m)*100) : 0;
+    return { s, p, m, pct };
+  }).sort((a,b) => b.pct - a.pct);
+  el.innerHTML = rows.map(({s, p, m, pct}) => {
+    const fc = pct>=75?'#22c78a':pct>=50?'#f5a623':'#ef5350';
+    const cls = pct>=75?'b-green':pct>=50?'b-yellow':'b-red';
+    return `<div class="report-row">
+      <span class="s-num">${s.roll}</span>
+      <div style="flex:1;">
+        <div class="r-name">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <div class="pbar" style="flex:1;"><div class="pbar-fill" style="width:${pct}%;background:${fc};"></div></div>
+          <span style="font-size:0.75rem;color:var(--text3);min-width:40px;text-align:right;">${p}/${m}</span>
+        </div>
+      </div>
+      <span class="pct-badge ${cls}" style="margin-left:8px;">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+//  Start
+// ══════════════════════════════════════
+init();
+</script>
+</body>
+</html>
