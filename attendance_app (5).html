@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>উপস্থিতি ট্র্যাকার</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hind Siliguri',sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh}
+.page{display:none}.page.active{display:block}
+
+/* LOADING */
+.loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem}
+.spinner{width:40px;height:40px;border:3px solid #21262d;border-top-color:#1f6feb;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-size:.9rem;color:#7d8590}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:radial-gradient(ellipse at 50% -10%,#1c2d4f 0%,#0d1117 60%)}
+.login-box{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center}
+.app-logo{font-size:2.8rem;margin-bottom:.8rem}
+.login-box h1{font-size:1.5rem;font-weight:700;margin-bottom:.3rem}
+.login-box .sub{font-size:.82rem;color:#7d8590;margin-bottom:1.8rem}
+.role-switch{display:flex;background:#0d1117;border-radius:8px;padding:3px;margin-bottom:1.5rem;gap:3px}
+.rs-btn{flex:1;padding:9px;font-size:.85rem;font-family:inherit;border:none;border-radius:6px;background:transparent;color:#7d8590;cursor:pointer;font-weight:500;transition:all .2s}
+.rs-btn.active{background:#1f6feb;color:#fff}
+.field{margin-bottom:1rem;text-align:left}
+.field label{display:block;font-size:.78rem;color:#7d8590;margin-bottom:5px;font-weight:500}
+.field input{width:100%;padding:10px 14px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-family:inherit;font-size:.9rem;outline:none;transition:border .2s}
+.field input:focus{border-color:#1f6feb}
+.btn-main{width:100%;padding:12px;background:#1f6feb;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s;margin-top:.3rem}
+.btn-main:hover{background:#1a5cd8}
+.btn-main:disabled{background:#21262d;color:#7d8590;cursor:not-allowed}
+.err{color:#f85149;font-size:.8rem;margin-top:.8rem;min-height:1.1rem}
+
+/* SETUP */
+.setup-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:#0d1117}
+.setup-box{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:420px}
+.setup-box h2{font-size:1.3rem;font-weight:700;margin-bottom:.4rem}
+.setup-box p{font-size:.83rem;color:#7d8590;margin-bottom:1.5rem;line-height:1.6}
+.setup-note{background:#1c2d4f;border:1px solid #1f6feb55;border-radius:8px;padding:.85rem 1rem;font-size:.8rem;color:#79c0ff;margin-bottom:1.5rem;line-height:1.7}
+
+/* APP */
+.app-wrap{max-width:840px;margin:0 auto;padding:1rem}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0 1.25rem;border-bottom:1px solid #21262d;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem}
+.tb-left h2{font-size:1.05rem;font-weight:700}
+.tb-left span{font-size:.78rem;color:#7d8590;margin-top:2px;display:block}
+.tb-right{display:flex;align-items:center;gap:8px}
+.role-pill{padding:3px 12px;border-radius:20px;font-size:.75rem;font-weight:600}
+.pill-t{background:rgba(31,111,235,.18);color:#79c0ff;border:1px solid rgba(31,111,235,.4)}
+.pill-v{background:rgba(125,133,144,.1);color:#7d8590;border:1px solid #21262d}
+.btn-logout{padding:5px 13px;background:transparent;border:1px solid #30363d;border-radius:7px;color:#7d8590;font-family:inherit;font-size:.78rem;cursor:pointer;transition:all .15s}
+.btn-logout:hover{border-color:#f85149;color:#f85149}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#3fb950;display:inline-block;margin-right:4px}
+.sync-dot.off{background:#f85149}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:#161b22;border-radius:8px;padding:3px;margin-bottom:1.5rem;overflow-x:auto}
+.tab{flex:1;min-width:70px;padding:8px 8px;font-size:.79rem;font-family:inherit;border:none;border-radius:6px;background:transparent;color:#7d8590;cursor:pointer;font-weight:500;transition:all .2s;white-space:nowrap}
+.tab.active{background:#21262d;color:#e6edf3;border:1px solid #30363d}
+
+/* PANELS */
+.panel{display:none}.panel.active{display:block}
+
+/* CARDS */
+.card{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1rem}
+.card-title{font-size:.72rem;font-weight:600;color:#7d8590;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:.9rem 1rem;text-align:center}
+.mv{font-size:1.9rem;font-weight:700;line-height:1;margin-bottom:3px}
+.ml{font-size:.72rem;color:#7d8590}
+.c-blue{color:#79c0ff}.c-green{color:#3fb950}.c-red{color:#f85149}.c-yellow{color:#e3b341}
+
+/* INPUTS */
+.input-row{display:flex;gap:8px;margin-bottom:1rem}
+.inp{flex:1;padding:9px 13px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-family:inherit;font-size:.88rem;outline:none}
+.inp:focus{border-color:#1f6feb}
+.btn{padding:8px 16px;border:1px solid #30363d;border-radius:8px;background:transparent;color:#e6edf3;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn:hover{background:#21262d}
+.btn-blue{background:#1f6feb;border-color:#1f6feb;color:#fff}.btn-blue:hover{background:#1a5cd8}
+.btn-green{background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.5);color:#3fb950}
+.btn-red{background:transparent;border-color:rgba(248,81,73,.3);color:#f09090;font-size:.78rem;padding:5px 10px}.btn-red:hover{border-color:#f85149;color:#f85149}
+
+/* STUDENT ROW */
+.s-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #21262d}
+.s-row:last-child{border-bottom:none}
+.s-num{font-size:.72rem;color:#484f58;min-width:24px}
+.s-name{flex:1;font-size:.88rem}
+.search-inp{width:100%;padding:8px 13px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-family:inherit;font-size:.85rem;margin-bottom:12px;outline:none}
+.search-inp:focus{border-color:#1f6feb}
+
+/* ATTENDANCE */
+.date-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.date-inp{padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;font-family:inherit;font-size:.82rem}
+.sess-btn{padding:6px 14px;background:#0d1117;border:1px solid #30363d;border-radius:20px;color:#7d8590;font-family:inherit;font-size:.78rem;cursor:pointer;transition:all .15s}
+.sess-btn.active{background:rgba(31,111,235,.15);border-color:#1f6feb;color:#79c0ff;font-weight:600}
+.bulk-row{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.att-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #21262d}
+.att-row:last-child{border-bottom:none}
+.att-name{flex:1;font-size:.88rem}
+.tog-wrap{display:flex;gap:4px}
+.tog{padding:5px 12px;font-size:.78rem;font-family:inherit;border-radius:20px;border:1px solid #30363d;background:transparent;color:#7d8590;cursor:pointer;font-weight:500;transition:all .15s}
+.tog:disabled{cursor:not-allowed;opacity:.4}
+.tog.present{background:rgba(63,185,80,.15);border-color:rgba(63,185,80,.6);color:#3fb950}
+.tog.absent{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:#f85149}
+.save-flash{font-size:.78rem;color:#3fb950;transition:opacity .5s}
+
+/* REPORT & HISTORY */
+.rep-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #21262d}
+.rep-row:last-child{border-bottom:none}
+.pbar{height:5px;background:#21262d;border-radius:3px;flex:1;overflow:hidden;min-width:60px}
+.pbar-fill{height:100%;border-radius:3px;transition:width .4s}
+.pct-badge{padding:3px 10px;border-radius:20px;font-size:.73rem;font-weight:700;min-width:44px;text-align:center}
+.bg{background:rgba(63,185,80,.15);color:#3fb950}
+.by{background:rgba(227,179,65,.15);color:#e3b341}
+.br{background:rgba(248,81,73,.12);color:#f85149}
+.hist-item{padding:12px 0;border-bottom:1px solid #21262d}
+.hist-item:last-child{border-bottom:none}
+.hist-date{font-size:.86rem;font-weight:600;margin-bottom:2px}
+.hist-meta{font-size:.76rem;color:#7d8590;margin-bottom:7px}
+.prog{height:4px;background:#21262d;border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:#484f58;font-size:.85rem}
+.lock-notice{text-align:center;padding:2rem;color:#7d8590;font-size:.88rem;background:#161b22;border:1px solid #21262d;border-radius:12px;margin-bottom:1rem}
+
+@media(max-width:480px){.metrics{grid-template-columns:1fr 1fr}.tab{font-size:.72rem;padding:7px 5px}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="pg-loading" class="page active">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <div class="load-txt">সংযোগ হচ্ছে...</div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="pg-setup" class="page">
+<div class="setup-wrap">
+<div class="setup-box">
+  <div style="font-size:2.5rem;margin-bottom:.8rem">📚</div>
+  <h2>প্রথমবার সেটআপ</h2>
+  <p>নিচের তথ্যগুলো একবারই দিতে হবে — এরপর আর কখনো দিতে হবে না।</p>
+  <div class="setup-note">
+    ✅ সব তথ্য Firebase-এ সেভ হবে<br>
+    ✅ যেকোনো ডিভাইস থেকে একই ডেটা দেখা যাবে<br>
+    ✅ শুধু শিক্ষক পাসওয়ার্ড দিয়ে লগইন করবেন
+  </div>
+  <div class="field"><label>ক্লাস / ব্যাচের নাম</label><input type="text" id="s-class" placeholder="যেমন: HSC-2026, ব্যাচ-A"/></div>
+  <div class="field"><label>শিক্ষকের নাম</label><input type="text" id="s-teacher" placeholder="আপনার নাম লিখুন"/></div>
+  <div class="field"><label>পাসওয়ার্ড তৈরি করুন</label><input type="password" id="s-p1" placeholder="কমপক্ষে ৪ অক্ষর"/></div>
+  <div class="field"><label>পাসওয়ার্ড আবার লিখুন</label><input type="password" id="s-p2" placeholder="নিশ্চিত করুন"/></div>
+  <button class="btn-main" id="setup-btn" onclick="doSetup()">সেটআপ সম্পন্ন করুন →</button>
+  <div class="err" id="setup-err"></div>
+</div>
+</div>
+</div>
+
+<!-- LOGIN -->
+<div id="pg-login" class="page">
+<div class="login-wrap">
+<div class="login-box">
+  <div class="app-logo">📚</div>
+  <h1 id="login-title">উপস্থিতি ট্র্যাকার</h1>
+  <p class="sub" id="login-sub">লগইন করুন</p>
+  <div class="role-switch">
+    <button class="rs-btn active" onclick="setLR('viewer')">👁️ শুধু দেখব</button>
+    <button class="rs-btn" onclick="setLR('teacher')">🔐 শিক্ষক লগইন</button>
+  </div>
+  <div id="pass-field" style="display:none">
+    <div class="field"><label>পাসওয়ার্ড</label>
+    <input type="password" id="login-pass" placeholder="পাসওয়ার্ড লিখুন..." onkeydown="if(event.key==='Enter')doLogin()"/></div>
+  </div>
+  <button class="btn-main" id="login-btn" onclick="doLogin()">প্রবেশ করুন →</button>
+  <div class="err" id="login-err"></div>
+  <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid #21262d;font-size:.73rem;color:#484f58">
+    শিক্ষক নন? পাসওয়ার্ড ছাড়াই "শুধু দেখব" বেছে নিন
+  </div>
+</div>
+</div>
+</div>
+
+<!-- MAIN APP -->
+<div id="pg-app" class="page">
+<div class="app-wrap">
+  <div class="topbar">
+    <div class="tb-left">
+      <h2 id="app-title">📚 ট্র্যাকার</h2>
+      <span id="app-sub"></span>
+    </div>
+    <div class="tb-right">
+      <span><span class="sync-dot" id="sync-dot"></span><span style="font-size:.72rem;color:#7d8590" id="sync-txt">লাইভ</span></span>
+      <span class="role-pill" id="role-pill"></span>
+      <button class="btn-logout" onclick="doLogout()">লগআউট</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="goTab('overview')">📊 সারসংক্ষেপ</button>
+    <button class="tab" onclick="goTab('attendance')">✅ উপস্থিতি</button>
+    <button class="tab" onclick="goTab('students')">👥 ছাত্র</button>
+    <button class="tab" onclick="goTab('history')">📅 ইতিহাস</button>
+    <button class="tab" onclick="goTab('report')">📈 রিপোর্ট</button>
+    <button class="tab" onclick="goTab('weekly')">🗓️ সাপ্তাহিক</button>
+    <button class="tab" onclick="goTab('monthly')">📆 মাসিক</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="pn-overview">
+    <div class="metrics" id="ov-metrics">
+      <div class="metric"><div class="mv c-blue">—</div><div class="ml">মোট ছাত্র</div></div>
+      <div class="metric"><div class="mv c-blue">—</div><div class="ml">মোট ক্লাস</div></div>
+      <div class="metric"><div class="mv c-green">—</div><div class="ml">গড় উপস্থিতি</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">সাম্প্রতিক ক্লাস</div>
+      <div id="ov-recent"><div class="empty">লোড হচ্ছে...</div></div>
+    </div>
+    <div class="card" id="ov-low-card" style="display:none">
+      <div class="card-title">⚠️ কম উপস্থিতি (৭৫%-এর নিচে)</div>
+      <div id="ov-low"></div>
+    </div>
+  </div>
+
+  <!-- ATTENDANCE -->
+  <div class="panel" id="pn-attendance">
+    <div id="att-lock" class="lock-notice" style="display:none">🔒 উপস্থিতি দেওয়ার ক্ষমতা শুধু শিক্ষকের আছে</div>
+    <div id="att-main">
+      <div class="date-row">
+        <input type="date" class="date-inp" id="att-date" onchange="renderAttList()"/>
+        <button class="sess-btn active" id="s1" onclick="setSess(1)">১ম ক্লাস</button>
+        <button class="sess-btn" id="s2" onclick="setSess(2)">২য় ক্লাস</button>
+        <button class="sess-btn" id="s3" onclick="setSess(3)">৩য় ক্লাস</button>
+      </div>
+      <div class="bulk-row">
+        <button class="btn btn-green" onclick="markAll(true)">✓ সবাই উপস্থিত</button>
+        <button class="btn" style="color:#f85149;border-color:rgba(248,81,73,.3)" onclick="markAll(false)">✗ সবাই অনুপস্থিত</button>
+        <span style="flex:1"></span>
+        <span class="save-flash" id="att-flash"></span>
+        <button class="btn btn-blue" onclick="saveAtt()">☁️ সেভ করুন</button>
+      </div>
+      <div class="card"><div id="att-list"><div class="empty">লোড হচ্ছে...</div></div></div>
+      <div id="att-count" style="font-size:.76rem;color:#7d8590;text-align:right;margin-top:-6px"></div>
+    </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="panel" id="pn-students">
+    <div id="stu-add-row" style="display:none">
+      <div class="input-row">
+        <input type="text" class="inp" id="new-stu" placeholder="ছাত্রের নাম লিখুন..." onkeydown="if(event.key==='Enter')addStu()"/>
+        <button class="btn btn-blue" onclick="addStu()">+ যোগ</button>
+      </div>
+    </div>
+    <div class="card">
+      <input type="text" class="search-inp" id="stu-search" placeholder="🔍 নাম খুঁজুন..." oninput="renderStudents()"/>
+      <div id="stu-list"><div class="empty">লোড হচ্ছে...</div></div>
+    </div>
+    <div id="stu-count" style="font-size:.76rem;color:#484f58;text-align:center;padding:4px"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel" id="pn-history">
+    <div class="card"><div id="hist-list"><div class="empty">লোড হচ্ছে...</div></div></div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="panel" id="pn-report">
+    <div class="card">
+      <div class="card-title">সামগ্রিক রিপোর্ট &nbsp;|&nbsp; সবুজ ≥৭৫% &nbsp; হলুদ ৫০-৭৪% &nbsp; লাল &lt;৫০%</div>
+      <div id="rep-list"><div class="empty">লোড হচ্ছে...</div></div>
+    </div>
+  </div>
+
+  <!-- WEEKLY -->
+  <div class="panel" id="pn-weekly">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem">সপ্তাহ বেছে নিন</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+        <input type="week" class="date-inp" id="week-pick" onchange="renderWeekly()"/>
+        <button class="btn btn-blue" onclick="setThisWeek()">এই সপ্তাহ</button>
+      </div>
+      <div id="weekly-summary" style="margin-bottom:1rem"></div>
+      <div class="card-title">ক্লাসওয়ারি বিবরণ</div>
+      <div id="weekly-classes"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">ছাত্রওয়ারি উপস্থিতি (এই সপ্তাহ)</div>
+      <div id="weekly-students"></div>
+    </div>
+  </div>
+
+  <!-- MONTHLY -->
+  <div class="panel" id="pn-monthly">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem">মাস বেছে নিন</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+        <input type="month" class="date-inp" id="month-pick" onchange="renderMonthly()"/>
+        <button class="btn btn-blue" onclick="setThisMonth()">এই মাস</button>
+      </div>
+      <div id="monthly-summary" style="margin-bottom:1rem"></div>
+      <div class="card-title">ক্লাসওয়ারি বিবরণ</div>
+      <div id="monthly-classes"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">ছাত্রওয়ারি উপস্থিতি (এই মাস)</div>
+      <div id="monthly-students"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  Firebase Config
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDummyKeyForInit",
+  authDomain: "myclass-ffa40.firebaseapp.com",
+  databaseURL: "https://myclass-ffa40-default-rtdb.firebaseio.com",
+  projectId: "myclass-ffa40",
+  storageBucket: "myclass-ffa40.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:000000000000000000"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ── refs ──
+const cfgRef  = db.ref('config');
+const stuRef  = db.ref('students');
+const recRef  = db.ref('records');
+
+// ══════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════
+let role = 'viewer';
+let loginRole = 'viewer';
+let cfg = null;
+let students = [];
+let records = {};
+let sess = 1;
+let activeTab = 'overview';
+
+function hash(p){ let h=0; for(let i=0;i<p.length;i++) h=(Math.imul(31,h)+p.charCodeAt(i))|0; return h.toString(16)+'_'+p.length; }
+
+// ══════════════════════════════════════════
+//  Pages
+// ══════════════════════════════════════════
+function showPg(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  Init — load from Firebase
+// ══════════════════════════════════════════
+async function init(){
+  showPg('loading');
+  try {
+    // Load config
+    const cfgSnap = await cfgRef.once('value');
+    cfg = cfgSnap.val();
+
+    // Load students
+    const stuSnap = await stuRef.once('value');
+    students = stuSnap.val() ? Object.values(stuSnap.val()) : [];
+
+    // Load records
+    const recSnap = await recRef.once('value');
+    records = recSnap.val() || {};
+
+    // Live listeners
+    stuRef.on('value', snap => {
+      students = snap.val() ? Object.values(snap.val()) : [];
+      if(activeTab==='students') renderStudents();
+      if(activeTab==='overview') renderOverview();
+      if(activeTab==='report') renderReport();
+      updateMeta();
+    });
+    recRef.on('value', snap => {
+      records = snap.val() || {};
+      if(activeTab==='overview') renderOverview();
+      if(activeTab==='attendance') renderAttList();
+      if(activeTab==='history') renderHistory();
+      if(activeTab==='report') renderReport();
+      if(activeTab==='weekly') renderWeekly();
+      if(activeTab==='monthly') renderMonthly();
+    });
+
+    setSyncStatus(true);
+
+    if(!cfg){ showPg('setup'); return; }
+
+    // Check local session (8 hours)
+    try {
+      const s = JSON.parse(localStorage.getItem('att_sess_v4')||'null');
+      if(s && s.role==='teacher' && s.ts > Date.now()-8*3600*1000){
+        role='teacher'; enterApp(); return;
+      }
+    } catch(e){}
+
+    setupLoginPage();
+    showPg('login');
+
+  } catch(e){
+    setSyncStatus(false);
+    showPg('loading');
+    document.querySelector('.load-txt').textContent = '❌ সংযোগ ব্যর্থ। পেজ রিফ্রেশ করুন।';
+  }
+}
+
+function setSyncStatus(ok){
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-txt');
+  if(!dot||!txt) return;
+  dot.className='sync-dot'+(ok?'':' off');
+  txt.textContent=ok?'লাইভ':'অফলাইন';
+}
+
+function setupLoginPage(){
+  document.getElementById('login-title').textContent='📚 '+(cfg?.className||'উপস্থিতি ট্র্যাকার');
+  document.getElementById('login-sub').textContent=cfg?.teacherName?cfg.teacherName+'-এর ক্লাস':'';
+}
+
+// ══════════════════════════════════════════
+//  Setup (first time)
+// ══════════════════════════════════════════
+async function doSetup(){
+  const cn=document.getElementById('s-class').value.trim();
+  const tn=document.getElementById('s-teacher').value.trim();
+  const p1=document.getElementById('s-p1').value;
+  const p2=document.getElementById('s-p2').value;
+  const err=document.getElementById('setup-err');
+  if(!cn||!tn){err.textContent='ক্লাসের নাম ও শিক্ষকের নাম দিন';return;}
+  if(p1.length<4){err.textContent='পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে';return;}
+  if(p1!==p2){err.textContent='পাসওয়ার্ড দুটো মেলেনি';return;}
+  const btn=document.getElementById('setup-btn');
+  btn.disabled=true; btn.textContent='সেভ হচ্ছে...';
+  cfg={className:cn,teacherName:tn,passHash:hash(p1)};
+  await cfgRef.set(cfg);
+  role='teacher';
+  localStorage.setItem('att_sess_v4',JSON.stringify({role:'teacher',ts:Date.now()}));
+  enterApp();
+}
+
+// ══════════════════════════════════════════
+//  Login
+// ══════════════════════════════════════════
+function setLR(r){
+  loginRole=r;
+  document.querySelectorAll('.rs-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&r==='viewer')||(i===1&&r==='teacher')));
+  document.getElementById('pass-field').style.display=r==='teacher'?'block':'none';
+}
+function doLogin(){
+  if(loginRole==='viewer'){role='viewer';enterApp();return;}
+  const p=document.getElementById('login-pass').value;
+  if(!p){document.getElementById('login-err').textContent='পাসওয়ার্ড লিখুন';return;}
+  if(hash(p)!==cfg.passHash){document.getElementById('login-err').textContent='❌ পাসওয়ার্ড সঠিক নয়';return;}
+  role='teacher';
+  localStorage.setItem('att_sess_v4',JSON.stringify({role:'teacher',ts:Date.now()}));
+  enterApp();
+}
+function doLogout(){
+  localStorage.removeItem('att_sess_v4');
+  role='viewer';
+  const lp=document.getElementById('login-pass');
+  if(lp) lp.value='';
+  document.getElementById('login-err').textContent='';
+  setLR('viewer');
+  setupLoginPage();
+  showPg('login');
+}
+
+// ══════════════════════════════════════════
+//  Enter App
+// ══════════════════════════════════════════
+function updateMeta(){
+  document.getElementById('app-sub').textContent=(cfg?.teacherName||'')+' | '+students.length+' জন ছাত্রছাত্রী';
+}
+function enterApp(){
+  showPg('app');
+  const isT=role==='teacher';
+  document.getElementById('app-title').textContent='📚 '+(cfg?.className||'ট্র্যাকার');
+  updateMeta();
+  const rp=document.getElementById('role-pill');
+  rp.textContent=isT?'👨‍🏫 শিক্ষক':'👁️ দর্শক';
+  rp.className='role-pill '+(isT?'pill-t':'pill-v');
+  document.getElementById('att-lock').style.display=isT?'none':'block';
+  document.getElementById('att-main').style.display=isT?'block':'none';
+  document.getElementById('stu-add-row').style.display=isT?'block':'none';
+  const d=document.getElementById('att-date');
+  if(d) d.value=new Date().toISOString().split('T')[0];
+  goTab('overview');
+}
+
+// ══════════════════════════════════════════
+//  Tabs
+// ══════════════════════════════════════════
+const TABS=['overview','attendance','students','history','report','weekly','monthly'];
+function goTab(t){
+  activeTab=t;
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',TABS[i]===t));
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',TABS[i]===t));
+  if(t==='overview') renderOverview();
+  if(t==='attendance') renderAttList();
+  if(t==='students') renderStudents();
+  if(t==='history') renderHistory();
+  if(t==='report') renderReport();
+  if(t==='weekly'){setThisWeek();renderWeekly();}
+  if(t==='monthly'){setThisMonth();renderMonthly();}
+}
+
+// ══════════════════════════════════════════
+//  Overview
+// ══════════════════════════════════════════
+function renderOverview(){
+  const total=students.length;
+  const allKeys=Object.keys(records);
+  const tc=allKeys.length;
+  // গড় শুধু overall
+  let sum=0,cnt=0;
+  students.forEach(s=>{let p=0,m=0;Object.values(records).forEach(r=>{if(r[s.id]!==undefined){m++;if(r[s.id])p++;}});if(m>0){sum+=p/m;cnt++;}});
+  const avg=cnt>0?Math.round((sum/cnt)*100):0;
+  const ac=avg>=75?'c-green':avg>=50?'c-yellow':'c-red';
+  document.getElementById('ov-metrics').innerHTML=`
+    <div class="metric"><div class="mv c-blue">${total}</div><div class="ml">মোট ছাত্র</div></div>
+    <div class="metric"><div class="mv c-blue">${tc}</div><div class="ml">মোট ক্লাস</div></div>
+    <div class="metric"><div class="mv ${ac}">${avg>0?avg+'%':'—'}</div><div class="ml">গড় উপস্থিতি</div></div>`;
+
+  // সাম্প্রতিক ক্লাস — প্রতিটি আলাদা
+  const days=['রবি','সোম','মঙ্গল','বুধ','বৃহঃ','শুক্র','শনি'];
+  const keys=allKeys.sort().reverse().slice(0,6);
+  if(!keys.length){document.getElementById('ov-recent').innerHTML='<div class="empty">এখনো কোনো ক্লাস রেকর্ড নেই</div>';return;}
+  document.getElementById('ov-recent').innerHTML=keys.map(k=>{
+    const[date,s]=k.split('_');
+    const sessNum=s?.replace('s','')||'?';
+    const rec=records[k];
+    let p=0,m=0;students.forEach(st=>{if(rec[st.id]!==undefined){m++;if(rec[st.id])p++;}});
+    const pct=m>0?Math.round((p/m)*100):0;
+    const d=new Date(date);
+    const bc=pct>=75?'bg':pct>=50?'by':'br';
+    const fc=pct>=75?'#3fb950':pct>=50?'#e3b341':'#f85149';
+    return `<div class="hist-item">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="hist-date">${date} <span style="font-weight:400;color:#7d8590;font-size:.78rem">(${days[d.getDay()]})</span>
+            <span style="margin-left:6px;font-size:.78rem;color:#79c0ff;background:rgba(31,111,235,.12);padding:1px 8px;border-radius:10px">${sessNum} নং ক্লাস</span>
+          </div>
+          <div class="hist-meta" style="margin-top:3px">উপস্থিত ${p} জন | অনুপস্থিত ${m-p} জন | চিহ্নিত ${m}/${students.length}</div>
+        </div>
+        <span class="pct-badge ${bc}">${pct}%</span>
+      </div>
+      <div class="prog" style="margin-top:8px"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div>
+    </div>`;
+  }).join('');
+
+  // কম উপস্থিতি সতর্কতা
+  const low=students.filter(s=>{let p=0,m=0;Object.values(records).forEach(r=>{if(r[s.id]!==undefined){m++;if(r[s.id])p++;}});return m>=3&&(p/m)*100<75;});
+  const lc=document.getElementById('ov-low-card');
+  if(low.length){
+    lc.style.display='block';
+    document.getElementById('ov-low').innerHTML=low.map(s=>{
+      let p=0,m=0;Object.values(records).forEach(r=>{if(r[s.id]!==undefined){m++;if(r[s.id])p++;}});
+      return `<div class="s-row"><span class="s-num">${s.roll}</span><span class="s-name">${s.name}</span><span class="pct-badge br">${Math.round((p/m)*100)}%</span></div>`;
+    }).join('');
+  } else lc.style.display='none';
+}
+
+// ══════════════════════════════════════════
+//  Attendance
+// ══════════════════════════════════════════
+function setSess(n){
+  sess=n;[1,2,3].forEach(i=>document.getElementById('s'+i)?.classList.toggle('active',i===n));
+  renderAttList();
+}
+function getKey(){return document.getElementById('att-date').value+'_s'+sess;}
+function renderAttList(){
+  const el=document.getElementById('att-list');
+  if(!students.length){el.innerHTML='<div class="empty">প্রথমে ছাত্র যোগ করুন</div>';return;}
+  const k=getKey(),rec=records[k]||{};
+  let p=0;
+  el.innerHTML=students.map(s=>{
+    const isP=rec[s.id]===true,isA=rec[s.id]===false;
+    if(isP)p++;
+    return `<div class="att-row">
+      <span class="s-num">${s.roll}</span>
+      <span class="att-name">${s.name}</span>
+      <div class="tog-wrap">
+        <button class="tog ${isP?'present':''}" onclick="togAtt(${s.id},true)">✓ আছে</button>
+        <button class="tog ${isA?'absent':''}" onclick="togAtt(${s.id},false)">✗ নেই</button>
+      </div></div>`;
+  }).join('');
+  const m=Object.keys(rec).length;
+  document.getElementById('att-count').textContent=`উপস্থিত: ${p} | অনুপস্থিত: ${m-p} | চিহ্নিত: ${m}/${students.length}`;
+}
+
+// local temp state before saving
+let localRec = {};
+function togAtt(id,present){
+  const k=getKey();
+  if(!records[k])records[k]={};
+  records[k][id]=present;
+  renderAttList();
+}
+function markAll(present){
+  const k=getKey();
+  if(!records[k])records[k]={};
+  students.forEach(s=>records[k][s.id]=present);
+  renderAttList();
+}
+async function saveAtt(){
+  const k=getKey();
+  const btn=event.target.closest('button');
+  btn.disabled=true;btn.textContent='সেভ হচ্ছে...';
+  try {
+    await recRef.child(k).set(records[k]||{});
+    const el=document.getElementById('att-flash');
+    el.textContent='✓ সবার জন্য সেভ হয়েছে!';el.style.opacity='1';
+    setTimeout(()=>{el.style.opacity='0';},3000);
+  } catch(e){
+    alert('সেভ ব্যর্থ! ইন্টারনেট চেক করুন।');
+  }
+  btn.disabled=false;btn.textContent='☁️ সেভ করুন';
+}
+
+// ══════════════════════════════════════════
+//  Students
+// ══════════════════════════════════════════
+async function addStu(){
+  const inp=document.getElementById('new-stu');
+  const name=inp.value.trim();
+  if(!name)return;
+  const id=Date.now();
+  const roll=students.length+1;
+  inp.value='';
+  await stuRef.child(id).set({id,name,roll});
+}
+async function delStu(id){
+  if(!confirm('এই ছাত্রকে মুছবেন?'))return;
+  await stuRef.child(id).remove();
+  // re-roll
+  const newList=students.filter(s=>s.id!==id);
+  newList.forEach((s,i)=>s.roll=i+1);
+  await stuRef.set(newList.reduce((o,s)=>{o[s.id]=s;return o},{}));
+}
+function renderStudents(){
+  const q=(document.getElementById('stu-search')?.value||'').toLowerCase();
+  const el=document.getElementById('stu-list');
+  const fl=students.filter(s=>s.name.toLowerCase().includes(q));
+  if(!fl.length){el.innerHTML='<div class="empty">কোনো ছাত্র পাওয়া যায়নি</div>';return;}
+  const isT=role==='teacher';
+  el.innerHTML=fl.map(s=>`
+    <div class="s-row">
+      <span class="s-num">${s.roll}</span>
+      <span class="s-name">${s.name}</span>
+      ${isT?`<button class="btn btn-red" onclick="delStu(${s.id})">✕ মুছুন</button>`:''}
+    </div>`).join('');
+  const cnt=document.getElementById('stu-count');
+  if(cnt)cnt.textContent=`মোট ${students.length} জন ছাত্রছাত্রী`;
+}
+
+// ══════════════════════════════════════════
+//  History — প্রতিটি তারিখের প্রতিটি ক্লাস আলাদা
+// ══════════════════════════════════════════
+function renderHistory(){
+  const el=document.getElementById('hist-list');
+  const days=['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+  const keys=Object.keys(records).sort().reverse();
+  if(!keys.length){el.innerHTML='<div class="empty">কোনো রেকর্ড নেই</div>';return;}
+
+  // Group by date
+  const byDate={};
+  keys.forEach(k=>{
+    const[date]=k.split('_');
+    if(!byDate[date])byDate[date]=[];
+    byDate[date].push(k);
+  });
+
+  const sortedDates=Object.keys(byDate).sort().reverse();
+  el.innerHTML=sortedDates.map(date=>{
+    const d=new Date(date);
+    const day=days[d.getDay()];
+    const sessKeys=byDate[date].sort();
+    const sessHTML=sessKeys.map(k=>{
+      const[,s]=k.split('_');
+      const sessNum=s?.replace('s','')||'?';
+      const rec=records[k];
+      let p=0,m=0;
+      students.forEach(st=>{if(rec[st.id]!==undefined){m++;if(rec[st.id])p++;}});
+      const pct=m>0?Math.round((p/m)*100):0;
+      const bc=pct>=75?'bg':pct>=50?'by':'br';
+      const fc=pct>=75?'#3fb950':pct>=50?'#e3b341':'#f85149';
+      const del=role==='teacher'?`<button class="btn btn-red" style="padding:3px 8px;font-size:.72rem" onclick="delRec('${k}')">✕</button>`:'';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#0d1117;border-radius:8px;margin-top:6px">
+        <span style="font-size:.8rem;color:#79c0ff;font-weight:600;min-width:52px">${sessNum} নং ক্লাস</span>
+        <div style="flex:1">
+          <div style="font-size:.8rem;color:#7d8590">উপস্থিত ${p} | অনুপস্থিত ${m-p} | চিহ্নিত ${m}/${students.length}</div>
+          <div style="height:4px;background:#21262d;border-radius:2px;margin-top:5px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${fc};border-radius:2px"></div></div>
+        </div>
+        <span class="pct-badge ${bc}">${pct}%</span>
+        ${del}
+      </div>`;
+    }).join('');
+
+    return `<div class="hist-item">
+      <div style="font-size:.9rem;font-weight:700;color:#e6edf3;margin-bottom:2px">📅 ${date} <span style="font-size:.78rem;font-weight:400;color:#7d8590">(${day})</span></div>
+      <div style="font-size:.76rem;color:#484f58">${sessKeys.length}টি ক্লাস অনুষ্ঠিত</div>
+      ${sessHTML}
+    </div>`;
+  }).join('');
+}
+async function delRec(k){
+  if(!confirm('এই রেকর্ড মুছবেন?'))return;
+  await recRef.child(k).remove();
+}
+
+// ══════════════════════════════════════════
+//  Report
+// ══════════════════════════════════════════
+function renderReport(){
+  const el=document.getElementById('rep-list');
+  if(!students.length||!Object.keys(records).length){el.innerHTML='<div class="empty">কোনো তথ্য নেই</div>';return;}
+  const rows=students.map(s=>{
+    let p=0,m=0;Object.values(records).forEach(r=>{if(r[s.id]!==undefined){m++;if(r[s.id])p++;}});
+    return{s,p,m,pct:m>0?Math.round((p/m)*100):0};
+  }).sort((a,b)=>b.pct-a.pct);
+  el.innerHTML=rows.map(({s,p,m,pct})=>{
+    const fc=pct>=75?'#3fb950':pct>=50?'#e3b341':'#f85149';
+    const bc=pct>=75?'bg':pct>=50?'by':'br';
+    return `<div class="rep-row">
+      <span class="s-num">${s.roll}</span>
+      <div style="flex:1">
+        <div style="font-size:.88rem">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:${fc}"></div></div>
+          <span style="font-size:.72rem;color:#484f58;min-width:36px;text-align:right">${p}/${m}</span>
+        </div>
+      </div>
+      <span class="pct-badge ${bc}" style="margin-left:8px">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  Helper: filter records by date range
+// ══════════════════════════════════════════
+function getRecordsInRange(from, to){
+  // from, to: 'YYYY-MM-DD'
+  return Object.keys(records).filter(k=>{
+    const[date]=k.split('_');
+    return date>=from && date<=to;
+  });
+}
+
+function renderStudentStats(keys, containerId){
+  const el=document.getElementById(containerId);
+  if(!students.length||!keys.length){el.innerHTML='<div class="empty">এই সময়ে কোনো ক্লাস নেই</div>';return;}
+  const rows=students.map(s=>{
+    let p=0,m=0;
+    keys.forEach(k=>{const r=records[k];if(r&&r[s.id]!==undefined){m++;if(r[s.id])p++;}});
+    return{s,p,m,pct:m>0?Math.round((p/m)*100):0};
+  }).filter(r=>r.m>0).sort((a,b)=>b.pct-a.pct);
+  if(!rows.length){el.innerHTML='<div class="empty">কোনো তথ্য নেই</div>';return;}
+  el.innerHTML=rows.map(({s,p,m,pct})=>{
+    const fc=pct>=75?'#3fb950':pct>=50?'#e3b341':'#f85149';
+    const bc=pct>=75?'bg':pct>=50?'by':'br';
+    return `<div class="rep-row">
+      <span class="s-num">${s.roll}</span>
+      <div style="flex:1">
+        <div style="font-size:.88rem">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:${fc}"></div></div>
+          <span style="font-size:.72rem;color:#484f58;min-width:36px;text-align:right">${p}/${m}</span>
+        </div>
+      </div>
+      <span class="pct-badge ${bc}" style="margin-left:8px">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderClassList(keys, containerId){
+  const el=document.getElementById(containerId);
+  const days=['রবি','সোম','মঙ্গল','বুধ','বৃহঃ','শুক্র','শনি'];
+  if(!keys.length){el.innerHTML='<div class="empty" style="padding:1rem">কোনো ক্লাস নেই</div>';return;}
+  el.innerHTML=keys.sort().reverse().map(k=>{
+    const[date,s]=k.split('_');
+    const sessNum=s?.replace('s','')||'?';
+    const rec=records[k];
+    let p=0,m=0;students.forEach(st=>{if(rec[st.id]!==undefined){m++;if(rec[st.id])p++;}});
+    const pct=m>0?Math.round((p/m)*100):0;
+    const d=new Date(date);
+    const bc=pct>=75?'bg':pct>=50?'by':'br';
+    const fc=pct>=75?'#3fb950':pct>=50?'#e3b341':'#f85149';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0d1117;border-radius:8px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:.84rem;font-weight:600">${date} <span style="color:#7d8590;font-weight:400">(${days[d.getDay()]})</span>
+          <span style="margin-left:6px;font-size:.76rem;color:#79c0ff;background:rgba(31,111,235,.12);padding:1px 8px;border-radius:10px">${sessNum} নং ক্লাস</span>
+        </div>
+        <div style="font-size:.76rem;color:#7d8590;margin-top:3px">উপস্থিত ${p} | অনুপস্থিত ${m-p} | চিহ্নিত ${m}/${students.length}</div>
+        <div style="height:4px;background:#21262d;border-radius:2px;margin-top:5px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${fc};border-radius:2px"></div></div>
+      </div>
+      <span class="pct-badge ${bc}">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSummaryBar(keys, containerId){
+  const el=document.getElementById(containerId);
+  if(!keys.length){el.innerHTML='';return;}
+  let totalP=0,totalM=0;
+  keys.forEach(k=>{const r=records[k];students.forEach(s=>{if(r[s.id]!==undefined){totalM++;if(r[s.id])totalP++;}});});
+  const avg=totalM>0?Math.round((totalP/totalM)*100):0;
+  const cc=avg>=75?'#3fb950':avg>=50?'#e3b341':'#f85149';
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+    <div class="metric"><div class="mv c-blue">${keys.length}</div><div class="ml">ক্লাস সংখ্যা</div></div>
+    <div class="metric"><div class="mv" style="color:${cc}">${avg}%</div><div class="ml">গড় উপস্থিতি</div></div>
+    <div class="metric"><div class="mv c-green">${totalP}</div><div class="ml">মোট উপস্থিতি</div></div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════
+//  Weekly Report
+// ══════════════════════════════════════════
+function setThisWeek(){
+  const d=new Date();
+  const year=d.getFullYear();
+  const week=getISOWeek(d);
+  const wStr=year+'-W'+(week<10?'0'+week:week);
+  const el=document.getElementById('week-pick');
+  if(el){el.value=wStr;renderWeekly();}
+}
+function getISOWeek(d){
+  const tmp=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  tmp.setUTCDate(tmp.getUTCDate()+4-(tmp.getUTCDay()||7));
+  const year=new Date(Date.UTC(tmp.getUTCFullYear(),0,1));
+  return Math.ceil((((tmp-year)/86400000)+1)/7);
+}
+function getWeekRange(wStr){
+  // wStr: "2025-W23"
+  const[yearStr,wNum]=wStr.split('-W');
+  const year=parseInt(yearStr),w=parseInt(wNum);
+  const jan4=new Date(year,0,4);
+  const startOfWeek=new Date(jan4.getTime()+((w-1)*7-(jan4.getDay()||7)+1)*86400000);
+  const endOfWeek=new Date(startOfWeek.getTime()+6*86400000);
+  const fmt=dt=>dt.toISOString().split('T')[0];
+  return{from:fmt(startOfWeek),to:fmt(endOfWeek)};
+}
+function renderWeekly(){
+  const wStr=document.getElementById('week-pick')?.value;
+  if(!wStr)return;
+  const{from,to}=getWeekRange(wStr);
+  const keys=getRecordsInRange(from,to);
+  renderSummaryBar(keys,'weekly-summary');
+  renderClassList(keys,'weekly-classes');
+  renderStudentStats(keys,'weekly-students');
+}
+
+// ══════════════════════════════════════════
+//  Monthly Report
+// ══════════════════════════════════════════
+function setThisMonth(){
+  const d=new Date();
+  const mStr=d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1);
+  const el=document.getElementById('month-pick');
+  if(el){el.value=mStr;renderMonthly();}
+}
+function renderMonthly(){
+  const mStr=document.getElementById('month-pick')?.value;
+  if(!mStr)return;
+  const[year,mon]=mStr.split('-');
+  const from=`${year}-${mon}-01`;
+  const lastDay=new Date(parseInt(year),parseInt(mon),0).getDate();
+  const to=`${year}-${mon}-${lastDay<10?'0'+lastDay:lastDay}`;
+  const keys=getRecordsInRange(from,to);
+  renderSummaryBar(keys,'monthly-summary');
+  renderClassList(keys,'monthly-classes');
+  renderStudentStats(keys,'monthly-students');
+}
+
+// ══════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
